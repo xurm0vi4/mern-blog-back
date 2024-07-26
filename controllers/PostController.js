@@ -1,4 +1,5 @@
 import PostModel from '../models/Post.js';
+import UserModel from '../models/User.js';
 
 export const getLastTags = async (req, res) => {
   try {
@@ -47,12 +48,78 @@ export const getOne = async (req, res) => {
       },
     )
       .populate('user')
+      .populate('comments.author')
       .then((doc) => res.json(doc))
       .catch((err) => res.status(500).json({ message: 'Article not found' }));
   } catch (err) {
     console.log(err);
     res.status(500).json({
       message: 'Failed to create article',
+    });
+  }
+};
+
+export const commentPost = async (req, res) => {
+  try {
+    const post = await PostModel.findById(req.params.id);
+    if (!post) {
+      return res.status(404).send('Post not found');
+    }
+
+    const user = await UserModel.findById(req.userId);
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+
+    const comment = {
+      text: req.body.text,
+      author: user._id,
+    };
+
+    post.comments.push(comment);
+    await post.save();
+
+    const populatedPost = await post.populate('comments.author');
+
+    res.json(populatedPost);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      message: 'Failed to create comment',
+    });
+  }
+};
+
+export const getPostComments = async (req, res) => {
+  try {
+    const post = await PostModel.findById(req.params.id).populate('comments.author');
+    if (!post) {
+      return res.status(404).send('Post not found');
+    }
+
+    res.json(post.comments);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: 'Failed to retrieve comments',
+    });
+  }
+};
+
+export const getLastComments = async (req, res) => {
+  try {
+    const posts = await PostModel.find().limit(5).populate('comments.author').exec();
+
+    const comments = posts
+      .map((obj) => obj.comments)
+      .flat()
+      .slice(0, 5);
+
+    res.json(comments);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      message: 'Failed to get comments',
     });
   }
 };

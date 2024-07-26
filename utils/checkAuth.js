@@ -18,5 +18,4 @@ export default (req, res, next) => {
       message: 'No access',
     });
   }
-
 };
